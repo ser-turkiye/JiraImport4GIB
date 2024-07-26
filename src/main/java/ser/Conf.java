@@ -9,9 +9,6 @@ public class Conf {
     public static class ClassIDs{
         public static final String EFile = "8247ab44-47d5-4660-84a2-e6203107c7a1";
     }
-    public static class Paths {
-        public static final String MainPath = "C:/tmp2/bulk/jira-import4gib";
-    }
     public static class DescriptorLiterals{
         public static final String Project = "OBJECTNAME";
         public static final String DocID = "OBJECTDOCID";

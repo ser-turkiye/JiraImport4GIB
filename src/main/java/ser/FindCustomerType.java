@@ -8,6 +8,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -28,7 +29,6 @@ public class FindCustomerType extends UnifiedAgent {
         Utils.session = getSes();
         Utils.bpm = getBpm();
         Utils.server = Utils.session.getDocumentServer();
-        Utils.loadDirectory(Conf.Paths.MainPath);
 
         infoObj = getEventInfObj();
 
@@ -50,25 +50,27 @@ public class FindCustomerType extends UnifiedAgent {
             IDocument disu = getFirstDocInNode(infoObj, "Issue");
             if(disu == null){throw new Exception("Issue-Doc not found.");}
 
-            if(!cif.isEmpty() && !accNr.isEmpty()) {
-                JSONObject cfgs = loadGibCustomerTypes();
-                for (String ckey : cfgs.keySet()) {
-                    JSONObject ccfg = cfgs.getJSONObject(ckey);
-                    if(!cval.isEmpty()){
-                        List<String> kyws = ccfg.getJSONArray("keywords").toList().stream().map(Object::toString).collect(Collectors.toList());
-                        if(kyws.contains(cval)){
-                            ctyp = ckey;
-                            break;
-                        }
+
+            JSONObject cfgs = loadGibCustomerTypes();
+            for (String ckey : cfgs.keySet()) {
+                JSONObject ccfg = cfgs.getJSONObject(ckey);
+                if(!cval.isEmpty()){
+                    List<String> kyws = ccfg.getJSONArray("keywords").toList().stream().map(Object::toString).collect(Collectors.toList());
+                    if(kyws.contains(cval)){
+                        ctyp = ckey;
+                        break;
                     }
-                    if (!ccfg.has("classId")
-                            || ccfg.getString("classId") == null
-                            || ccfg.getString("classId").isEmpty()) {
-                        continue;
-                    }
-                    String clsId = ccfg.getString("classId");
+                }
+
+                if (!ccfg.has("classId")
+                || ccfg.getString("classId") == null
+                || ccfg.getString("classId").isEmpty()) {
+                    continue;
+                }
+                String clsId = ccfg.getString("classId");
+                if(!accNr.isEmpty()) {
                     IInformationObject cust = getEFileCustomer(clsId, cif);
-                    if(cust != null){
+                    if (cust != null) {
                         ctyp = ckey;
                         break;
                     }
@@ -84,9 +86,21 @@ public class FindCustomerType extends UnifiedAgent {
                 proc.commit();
             }
             else {
+                List<IInformationObject> gibs = new ArrayList<>();
+
                 Utils.copyDescriptors(infoObj, disu);
                 disu.setDescriptorValue(Conf.Descriptors.GIB_CustomerType, ctyp);
-                disu.commit();
+                gibs.add(disu);
+
+                List<IInformationObject> list = Utils.getAllDocInNode(infoObj, "Attachments");
+                for(IInformationObject atch : list){
+                    Utils.copyDescriptors(infoObj, atch);
+                    atch.setDescriptorValue(Conf.Descriptors.GIB_CustomerType, ctyp);
+                    gibs.add(atch);
+                }
+                for(IInformationObject gdoc : gibs){
+                    gdoc.commit();
+                }
 
                 infoObj.setDescriptorValue(Conf.Descriptors.GIB_CustomerType, ctyp);
                 infoObj.setDescriptorValue(Conf.Descriptors.Status, "Ready");
@@ -106,11 +120,11 @@ public class FindCustomerType extends UnifiedAgent {
         log.info("Finished");
         return resultSuccess("Ended successfully");
     }
-    private IInformationObject getEFileCustomer(String clsId, String cif) {
+    private IInformationObject getEFileCustomer(String clsId, String accNr) {
         StringBuilder builder = new StringBuilder();
         builder.append("TYPE = '").append(clsId).append("'")
                 .append(" AND ")
-                .append(Conf.DescriptorLiterals.CIF).append(" = '").append(cif).append("'");
+                .append(Conf.DescriptorLiterals.AccountNumber).append(" = '").append(accNr).append("'");
         String whereClause = builder.toString();
 
         IInformationObject[] informationObjects = helper.createQuery(new String[]{Conf.Databases.Customer}, whereClause, "", 1, false);

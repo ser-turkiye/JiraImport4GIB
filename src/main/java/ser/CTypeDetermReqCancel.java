@@ -1,7 +1,5 @@
 package ser;
 
-import com.ser.blueline.IInformationObject;
-import com.ser.blueline.ILink;
 import com.ser.blueline.bpm.IProcessInstance;
 import com.ser.blueline.bpm.ITask;
 import de.ser.doxis4.agentserver.UnifiedAgent;
@@ -9,18 +7,13 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.Arrays;
-import java.util.List;
 
 
 public class CTypeDetermReqCancel extends UnifiedAgent {
     Logger log = LogManager.getLogger();
     IProcessInstance processInstance;
-    IInformationObject qaInfObj;
     ProcessHelper helper;
     ITask task;
-    IInformationObject document;
-    String compCode;
-    String reqId;
     @Override
     protected Object execute() {
         if (getEventTask() == null)
@@ -33,7 +26,6 @@ public class CTypeDetermReqCancel extends UnifiedAgent {
         Utils.session = getSes();
         Utils.bpm = getBpm();
         Utils.server = Utils.session.getDocumentServer();
-        Utils.loadDirectory(Conf.Paths.MainPath);
         
         task = getEventTask();
 

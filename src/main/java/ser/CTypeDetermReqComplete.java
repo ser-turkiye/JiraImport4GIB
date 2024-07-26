@@ -8,6 +8,7 @@ import de.ser.doxis4.agentserver.UnifiedAgent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -33,7 +34,6 @@ public class CTypeDetermReqComplete extends UnifiedAgent {
         Utils.session = getSes();
         Utils.bpm = getBpm();
         Utils.server = Utils.session.getDocumentServer();
-        Utils.loadDirectory(Conf.Paths.MainPath);
         
         task = getEventTask();
 
@@ -68,12 +68,26 @@ public class CTypeDetermReqComplete extends UnifiedAgent {
             IInformationObject issue = getEFileIssue(cprj, diky);
             if(issue == null){throw new Exception("Issue EFile not found.");}
 
+            List<IInformationObject> gibs = new ArrayList<>();
+
+            Utils.copyDescriptors(issue, document);
+            document.setDescriptorValue(Conf.Descriptors.GIB_CustomerType, ctyp);
+            gibs.add(document);
+
+            List<IInformationObject> list = Utils.getAllDocInNode(issue, "Attachments");
+            for(IInformationObject atch : list){
+                Utils.copyDescriptors(issue, atch);
+                atch.setDescriptorValue(Conf.Descriptors.GIB_CustomerType, ctyp);
+                gibs.add(atch);
+            }
+            for(IInformationObject gdoc : gibs){
+                gdoc.commit();
+            }
+
             issue.setDescriptorValue(Conf.Descriptors.GIB_CustomerType, ctyp);
             issue.setDescriptorValue(Conf.Descriptors.Status, "Ready");
             issue.commit();
 
-            document.setDescriptorValue(Conf.Descriptors.GIB_CustomerType, ctyp);
-            document.commit();
 
             log.info("Tested.");
 

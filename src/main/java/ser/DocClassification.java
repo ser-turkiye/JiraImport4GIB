@@ -9,6 +9,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static ser.Utils.*;
@@ -27,8 +28,6 @@ public class DocClassification extends UnifiedAgent {
         Utils.session = getSes();
         Utils.bpm = getBpm();
         Utils.server = Utils.session.getDocumentServer();
-        Utils.loadDirectory(Conf.Paths.MainPath);
-
         infoObj = getEventInfObj();
 
         try {
@@ -43,8 +42,19 @@ public class DocClassification extends UnifiedAgent {
             JSONObject wcfs = Utils.loadGIBJiraTicketClassifications(ctyp);
 
             List<IInformationObject> list = Utils.getAllDocInNode(infoObj, "Attachments");
+
+            boolean save = true;
+            List<IDocument> gibs = new ArrayList<>();
             for(IInformationObject atch : list){
-                run4Document(infoObj, ctyp, atch, wcfs);
+                IDocument dgib = run4Document(infoObj, ctyp, atch, wcfs, save);
+                if(dgib == null){
+                    save = false;
+                    continue;
+                }
+                gibs.add(dgib);
+            }
+            for(IDocument gdoc : gibs){
+                gdoc.commit();
             }
 
             infoObj.setDescriptorValue(Conf.Descriptors.Status, "Done");
@@ -63,7 +73,7 @@ public class DocClassification extends UnifiedAgent {
         log.info("Finished");
         return resultSuccess("Ended successfully");
     }
-    private void run4Document(IInformationObject infoObj, String ctyp, IInformationObject document, JSONObject wcfs) throws Exception {
+    private IDocument run4Document(IInformationObject infoObj, String ctyp, IInformationObject document, JSONObject wcfs, boolean save) throws Exception {
 
         String fnam = document.getDescriptorValue(Conf.Descriptors.Name, String.class);
         JSONObject mcfg = null;
@@ -87,7 +97,7 @@ public class DocClassification extends UnifiedAgent {
             Utils.copyDescriptors(infoObj, proc);
             proc.setDescriptorValue("ObjectName", document.getID());
             proc.commit();
-            return;
+            return null;
         }
 
         String mfld = (mcfg.has("mainFolder") && mcfg.getString("mainFolder") != null ?
@@ -107,7 +117,12 @@ public class DocClassification extends UnifiedAgent {
         IDocument docGIB = copyDocument(document, mfld);
         Utils.copyDescriptors(document, docGIB);
         Utils.copyDescriptors(infoObj, docGIB);
-        docGIB.commit();
+        if(save){
+            docGIB.commit();
+            return null;
+        }
+
+        return  docGIB;
     }
     public static IDocument copyDocument(IInformationObject docu, String dtyp) throws Exception {
         IArchiveClass ac = Utils.server.getArchiveClassByName(Utils.session, dtyp);
